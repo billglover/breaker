@@ -77,6 +77,12 @@ func (b *Breaker) success() {
 	b.successCount++
 }
 
+// Reset returns the fail and success counters to zero
+func (b *Breaker) Reset() {
+	b.failCount = 0
+	b.successCount = 0
+}
+
 // Protect wraps a function that returns an error with the circuit
 // breaker. If an error is returned, the breaker increments the
 // failure counter. If a success is returned, the breaker increments
@@ -93,6 +99,7 @@ func (b *Breaker) Protect(f func() error) error {
 		}
 
 		b.state = StateClosed
+		b.Reset()
 	}
 
 	err := f()
