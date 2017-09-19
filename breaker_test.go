@@ -3,6 +3,7 @@ package breaker
 import (
 	"errors"
 	"testing"
+	"time"
 )
 
 func errorFunc() error {
@@ -151,5 +152,45 @@ func TestTripAfter(t *testing.T) {
 	})
 	if err == nil {
 		t.Fatalf("unexpected response: no error returned")
+	}
+}
+
+func TestResetAfter(t *testing.T) {
+	cb := NewBreaker().TripAfter(3)
+	outcomes := []bool{true, false, false, false}
+
+	for _, o := range outcomes {
+		cb.Protect(func() error {
+			if o {
+				return successFunc()
+			}
+			return errorFunc()
+		})
+	}
+
+	// confirm that we enter the open state after a series of failed transactions
+	if cb.CurrentState() != StateOpen {
+		t.Fatalf("unexpected final state: want %v, got %v", StateOpen, cb.CurrentState())
+	}
+
+	err := cb.Protect(func() error {
+		return successFunc()
+	})
+	if err == nil {
+		t.Fatalf("unexpected response: no error returned")
+	}
+
+	// wait 50ms and confirm that the breaker has reset
+	time.Sleep(50 * time.Millisecond)
+
+	err = cb.Protect(func() error {
+		return successFunc()
+	})
+	if err != nil {
+		t.Fatalf("unexpected response: %v", err)
+	}
+
+	if cb.CurrentState() != StateClosed {
+		t.Fatalf("unexpected final state: want %v, got %v", StateClosed, cb.CurrentState())
 	}
 }

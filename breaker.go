@@ -1,6 +1,7 @@
 package breaker
 
 import "errors"
+import "time"
 
 // Breaker tracks the state of the circuit breaker. All properties are
 // maintained internally to allow the circuit breaker to be used in a
@@ -8,8 +9,10 @@ import "errors"
 type Breaker struct {
 	failCount    int
 	successCount int
+	lastFail     time.Time
 	state        State
 	shouldTrip   stateFunc
+	shouldReset  stateFunc
 }
 
 // A StateFunc defines a function that can be used to determine a state
@@ -44,6 +47,7 @@ func NewBreaker() *Breaker {
 	b := Breaker{}
 	b.state = StateClosed
 	b.TripAfter(5)
+	b.ResetAfter(50 * time.Millisecond)
 	return &b
 }
 
@@ -65,6 +69,7 @@ func (b *Breaker) CurrentState() State {
 // fail increments the failCount
 func (b *Breaker) fail() {
 	b.failCount++
+	b.lastFail = time.Now()
 }
 
 // success increments the successCount
@@ -82,7 +87,12 @@ func (b *Breaker) success() {
 func (b *Breaker) Protect(f func() error) error {
 
 	if b.CurrentState() == StateOpen {
-		return errors.New("breaker open")
+
+		if b.shouldReset() == false {
+			return errors.New("breaker open")
+		}
+
+		b.state = StateClosed
 	}
 
 	err := f()
@@ -106,6 +116,19 @@ func (b *Breaker) Protect(f func() error) error {
 func (b *Breaker) TripAfter(n int) *Breaker {
 	b.shouldTrip = func() bool {
 		return b.FailCount() >= n
+	}
+	return b
+}
+
+// ResetAfter configures the breaker to reset after a period of time since
+// the last failure.
+func (b *Breaker) ResetAfter(t time.Duration) *Breaker {
+	b.shouldReset = func() bool {
+		resetTime := b.lastFail.Add(t)
+		if time.Now().After(resetTime) {
+			return true
+		}
+		return false
 	}
 	return b
 }
