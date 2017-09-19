@@ -5,6 +5,14 @@ import (
 	"testing"
 )
 
+func errorFunc() error {
+	return errors.New("protected service failure")
+}
+
+func successFunc() error {
+	return nil
+}
+
 func TestStates(t *testing.T) {
 	if StateClosed.String() != "closed" {
 		t.Fatalf("unexpected state description: want %s, got %s", "closed", StateClosed.String())
@@ -144,12 +152,4 @@ func TestTripAfter(t *testing.T) {
 	if err == nil {
 		t.Fatalf("unexpected response: no error returned")
 	}
-}
-
-func errorFunc() error {
-	return errors.New("protected service failure")
-}
-
-func successFunc() error {
-	return nil
 }
