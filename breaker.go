@@ -1,7 +1,9 @@
 package breaker
 
-import "errors"
-import "time"
+import (
+	"errors"
+	"time"
+)
 
 // Breaker tracks the state of the circuit breaker. All properties are
 // maintained internally to allow the circuit breaker to be used in a
@@ -82,8 +84,21 @@ func (b *Breaker) success() {
 
 // Reset returns the fail and success counters to zero
 func (b *Breaker) Reset() {
+	b.state = StateClosed
 	b.failCount = 0
 	b.successCount = 0
+}
+
+// partial returns the fail and success counters to zero
+func (b *Breaker) partial() {
+	b.state = StatePartial
+	b.failCount = 0
+	b.successCount = 0
+}
+
+// trip opens the breaker
+func (b *Breaker) trip() {
+	b.state = StateOpen
 }
 
 // Protect wraps a function that returns an error with the circuit
@@ -95,30 +110,39 @@ func (b *Breaker) Reset() {
 // state of the breaker.
 func (b *Breaker) Protect(f func() error) error {
 
+	// if the breaker is open and we are ready to reset then enter the
+	// partially open state
 	if b.CurrentState() == StateOpen {
-
 		if b.shouldReset() == false {
 			return errors.New("breaker open")
 		}
-
-		b.state = StateClosed
-		b.Reset()
+		b.partial()
 	}
 
+	// pass through the next request and handle the response based on
+	// the current state of the breaker
 	err := f()
 	if err != nil {
 		b.fail()
 
+		if b.CurrentState() == StatePartial {
+			b.trip()
+		}
+
 		if b.shouldTrip() == true {
-			b.state = StateOpen
+			b.trip()
 		}
 
 		return err
 	}
 
+	// if we are in the partial state then reset the breaker
+	if b.CurrentState() == StatePartial {
+		b.Reset()
+	}
+
 	b.success()
 	return nil
-
 }
 
 // TripAfter configures the breaker to trip after n failed transactions.

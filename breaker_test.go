@@ -164,7 +164,7 @@ func TestTripAfter(t *testing.T) {
 	}
 
 	if cb.FailCount() != 6 {
-		t.Fatalf("unexpected fail count: want %d, got %d", 5, cb.FailCount())
+		t.Fatalf("unexpected fail count: want %d, got %d", 6, cb.FailCount())
 	}
 
 	if cb.SuccessCount() != 1 {
@@ -176,7 +176,7 @@ func TestTripAfter(t *testing.T) {
 	}
 
 	err := cb.Protect(func() error {
-		return successFunc()
+		return errorFunc()
 	})
 	if err == nil {
 		t.Fatalf("unexpected response: no error returned")
@@ -198,7 +198,7 @@ func TestResetAfterSuccess(t *testing.T) {
 
 	// confirm that we enter the open state after a series of failed transactions
 	if cb.CurrentState() != StateOpen {
-		t.Fatalf("unexpected final state: want %v, got %v", StateOpen, cb.CurrentState())
+		t.Fatalf("unexpected state: want %v, got %v", StateOpen, cb.CurrentState())
 	}
 
 	err := cb.Protect(func() error {
@@ -208,20 +208,21 @@ func TestResetAfterSuccess(t *testing.T) {
 		t.Fatalf("unexpected response: no error returned")
 	}
 
-	// wait 50ms and confirm that the breaker has reset
+	// wait 50ms and confirm that the breaker has entered the partially open state
 	time.Sleep(50 * time.Millisecond)
 
 	err = cb.Protect(func() error {
 		return successFunc()
 	})
+
 	if err != nil {
 		t.Fatalf("unexpected response: %v", err)
 	}
-
 	if cb.CurrentState() != StateClosed {
 		t.Fatalf("unexpected final state: want %v, got %v", StateClosed, cb.CurrentState())
 	}
 
+	// confirm the counters end up where we would expect
 	if cb.FailCount() != 0 {
 		t.Fatalf("unexpected final fail count: want %d, got %d", 0, cb.FailCount())
 	}
@@ -246,7 +247,7 @@ func TestResetAfterFail(t *testing.T) {
 
 	// confirm that we enter the open state after a series of failed transactions
 	if cb.CurrentState() != StateOpen {
-		t.Fatalf("unexpected final state: want %v, got %v", StateOpen, cb.CurrentState())
+		t.Fatalf("unexpected state: want %v, got %v", StateOpen, cb.CurrentState())
 	}
 
 	err := cb.Protect(func() error {
@@ -259,12 +260,15 @@ func TestResetAfterFail(t *testing.T) {
 	// wait 50ms and confirm that the breaker has reset
 	time.Sleep(50 * time.Millisecond)
 
-	cb.Protect(func() error {
+	err = cb.Protect(func() error {
 		return errorFunc()
 	})
+	if err == nil {
+		t.Fatalf("unexpected response: no error returned")
+	}
 
-	if cb.CurrentState() != StateClosed {
-		t.Fatalf("unexpected final state: want %v, got %v", StateClosed, cb.CurrentState())
+	if cb.CurrentState() != StateOpen {
+		t.Fatalf("unexpected final state: want %v, got %v", StateOpen, cb.CurrentState())
 	}
 
 	if cb.FailCount() != 1 {
