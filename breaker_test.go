@@ -23,6 +23,10 @@ func TestStates(t *testing.T) {
 		t.Fatalf("unexpected state description: want %s, got %s", "open", StateOpen.String())
 	}
 
+	if StatePartial.String() != "partial" {
+		t.Fatalf("unexpected state description: want %s, got %s", "partial", StatePartial.String())
+	}
+
 	if State(30).String() != "unknown" {
 		t.Fatalf("unexpected state description: want %s, got %s", "unknown", State(30).String())
 	}

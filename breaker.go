@@ -26,6 +26,7 @@ type State int
 const (
 	StateOpen State = iota
 	StateClosed
+	StatePartial
 )
 
 func (s State) String() string {
@@ -34,6 +35,8 @@ func (s State) String() string {
 		return "closed"
 	case StateOpen:
 		return "open"
+	case StatePartial:
+		return "partial"
 	default:
 		return "unknown"
 	}
