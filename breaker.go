@@ -1,3 +1,17 @@
+/*
+Package breaker provides a simple implementation of the circuite breaker
+pattern. A typical use would be to protect a call to an external system.
+By protecting calls to external systems with a circuit breaker, you are
+able to respond quickly in the event of system failure, avoiding the
+need to wait for a timeout.
+
+   cb := NewBreaker().TripAfter(5).ResetAfter(500)
+
+Further information on the circuit breaker pattern can be found in the
+Microsoft Azure Architecture Patterns documentation.
+
+https://docs.microsoft.com/en-us/azure/architecture/patterns/circuit-breaker
+*/
 package breaker
 
 import (
@@ -5,9 +19,10 @@ import (
 	"time"
 )
 
-// Breaker tracks the state of the circuit breaker. All properties are
-// maintained internally to allow the circuit breaker to be used in a
-// concurrent environment.
+// Breaker represents a circuit breaker. In normal use, an instance of
+// the circuit breaker should be used to protect a single external
+// system. Protecting multiple systems with a single instance of a
+// circuit breaker is not recommended.
 type Breaker struct {
 	failCount    int
 	successCount int
@@ -24,7 +39,7 @@ type stateFunc func() bool
 // State represents the state of the circuit breaker
 type State int
 
-// Constants defining the state of the circuit breaker
+// Circuit breaker states
 const (
 	StateOpen State = iota
 	StateClosed
@@ -44,9 +59,12 @@ func (s State) String() string {
 	}
 }
 
-// NewBreaker returns a default instance of the circuit breaker. Unless
-// configured otherwise, the breaker will open after 5 failed transactions.
-// By default the broker will need to be manually reset.
+// NewBreaker returns an instance of a circuit breaker using the default
+// configuration.
+//
+// By default the circuit breaker will trip after 5 failed transactions,
+// enter the partially open state after 50ms. Once in the partially open
+// state it will reset if the next call is successful or trip if it fails.
 func NewBreaker() *Breaker {
 
 	b := Breaker{}

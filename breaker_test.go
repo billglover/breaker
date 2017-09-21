@@ -49,6 +49,12 @@ func TestNewBreaker(t *testing.T) {
 	}
 }
 
+func ExampleNewBreaker() {
+	cb := NewBreaker()
+
+	log.Printf("fail count: %d\n", cb.FailCount())
+}
+
 func TestFailCount(t *testing.T) {
 	cb := NewBreaker()
 
@@ -286,8 +292,34 @@ func ExampleBreaker_TripAfter() {
 
 	err := cb.Protect(func() error {
 		// make the function call you are trying to protect
-		// and return any errors
+		// and return an error on failure
 		return nil
+	})
+
+	if err != nil {
+		log.Println(err)
+	}
+}
+
+func ExampleBreaker_ResetAfter() {
+	cb := NewBreaker().TripAfter(5).ResetAfter(50 * time.Millisecond)
+
+	err := cb.Protect(func() error {
+		// make the function call you are trying to protect
+		// and return an error on failure
+		return nil
+	})
+
+	if err != nil {
+		log.Println(err)
+	}
+}
+
+func ExampleBreaker_Protect() {
+	cb := NewBreaker()
+
+	err := cb.Protect(func() error {
+		return errors.New("protected call failed")
 	})
 
 	if err != nil {
