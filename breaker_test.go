@@ -2,6 +2,7 @@ package breaker
 
 import (
 	"errors"
+	"log"
 	"testing"
 	"time"
 )
@@ -277,5 +278,19 @@ func TestResetAfterFail(t *testing.T) {
 
 	if cb.SuccessCount() != 0 {
 		t.Fatalf("unexpected final success count: want %d, got %d", 0, cb.SuccessCount())
+	}
+}
+
+func ExampleBreaker_TripAfter() {
+	cb := NewBreaker().TripAfter(5)
+
+	err := cb.Protect(func() error {
+		// make the function call you are trying to protect
+		// and return any errors
+		return nil
+	})
+
+	if err != nil {
+		log.Println(err)
 	}
 }
