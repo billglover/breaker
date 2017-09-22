@@ -290,25 +290,28 @@ func TestResetAfterFail(t *testing.T) {
 func TestSubscribe(t *testing.T) {
 
 	cb := NewBreaker()
-	c := cb.Subscribe()
+	c1 := cb.Subscribe()
+
+	// create a second subscriber but don't drain notifications
+	cb.Subscribe()
 
 	cb.trip()
-	s := <-c
+	s1 := <-c1
 
-	if s != "state: open" {
-		t.Fatalf("unexpected notification received: want %s, got %s", "state: open", s)
+	if s1 != StateOpen {
+		t.Fatalf("unexpected notification received: want %s, got %s", StateOpen, s1)
 	}
 
 	cb.partial()
-	s = <-c
-	if s != "state: partial" {
-		t.Fatalf("unexpected notification received: want %s, got %s", "state: partial", s)
+	s1 = <-c1
+	if s1 != StatePartial {
+		t.Fatalf("unexpected notification received: want %s, got %s", StatePartial, s1)
 	}
 
 	cb.Reset()
-	s = <-c
-	if s != "state: closed" {
-		t.Fatalf("unexpected notification received: want %s, got %s", "state: closed", s)
+	s1 = <-c1
+	if s1 != StateClosed {
+		t.Fatalf("unexpected notification received: want %s, got %s", StateClosed, s1)
 	}
 }
 
@@ -350,4 +353,27 @@ func ExampleBreaker_Protect() {
 	if err != nil {
 		log.Println(err)
 	}
+}
+
+func ExampleBreaker_Subscribe() {
+
+	// create a circuit breaker
+	cb := NewBreaker().TripAfter(1).ResetAfter(10 * time.Millisecond)
+
+	// subscribe to notifications
+	n := cb.Subscribe()
+	go func(c <-chan State) {
+		for s := range c {
+			log.Println(s)
+		}
+	}(n)
+
+	// simulate a call to a protected function
+
+	cb.Protect(func() error {
+		return errors.New("protected call failed")
+	})
+
+	// notify: open
+
 }
