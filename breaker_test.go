@@ -287,6 +287,31 @@ func TestResetAfterFail(t *testing.T) {
 	}
 }
 
+func TestSubscribe(t *testing.T) {
+
+	cb := NewBreaker()
+	c := cb.Subscribe()
+
+	cb.trip()
+	s := <-c
+
+	if s != "state: open" {
+		t.Fatalf("unexpected notification received: want %s, got %s", "state: open", s)
+	}
+
+	cb.partial()
+	s = <-c
+	if s != "state: partial" {
+		t.Fatalf("unexpected notification received: want %s, got %s", "state: partial", s)
+	}
+
+	cb.Reset()
+	s = <-c
+	if s != "state: closed" {
+		t.Fatalf("unexpected notification received: want %s, got %s", "state: closed", s)
+	}
+}
+
 func ExampleBreaker_TripAfter() {
 	cb := NewBreaker().TripAfter(5)
 

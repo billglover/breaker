@@ -30,6 +30,7 @@ type Breaker struct {
 	state        State
 	shouldTrip   stateFunc
 	shouldReset  stateFunc
+	notify       chan string
 }
 
 // A StateFunc defines a function that can be used to determine a state
@@ -105,6 +106,9 @@ func (b *Breaker) Reset() {
 	b.state = StateClosed
 	b.failCount = 0
 	b.successCount = 0
+	if b.notify != nil {
+		b.notify <- "state: closed"
+	}
 }
 
 // partial returns the fail and success counters to zero
@@ -112,11 +116,17 @@ func (b *Breaker) partial() {
 	b.state = StatePartial
 	b.failCount = 0
 	b.successCount = 0
+	if b.notify != nil {
+		b.notify <- "state: partial"
+	}
 }
 
 // trip opens the breaker
 func (b *Breaker) trip() {
 	b.state = StateOpen
+	if b.notify != nil {
+		b.notify <- "state: open"
+	}
 }
 
 // Protect wraps a function that returns an error with the circuit
@@ -183,4 +193,10 @@ func (b *Breaker) ResetAfter(t time.Duration) *Breaker {
 		return false
 	}
 	return b
+}
+
+func (b *Breaker) Subscribe() chan string {
+	c := make(chan string, 1)
+	b.notify = c
+	return c
 }
