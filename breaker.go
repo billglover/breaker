@@ -199,18 +199,8 @@ func (b *Breaker) Subscribe() chan State {
 
 func (b *Breaker) notify(state State) {
 	for _, s := range b.subscribers {
-
-	out:
-		// Drain the channels before sending a notification.
-		// This prevents blocking if notifications aren't
-		// consumed.
-		for {
-			select {
-			case <-s:
-			default:
-				break out
-			}
+		if len(s) < cap(s) {
+			s <- state
 		}
-		s <- state
 	}
 }
